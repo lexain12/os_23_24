@@ -1,4 +1,4 @@
-# os_23_24
+# Operating Systems Practice, 2023-2024, Autumn Semester
 
 ### How to use git: 
 
