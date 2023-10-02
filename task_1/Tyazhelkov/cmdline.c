@@ -3,9 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 
-static const int MAX_NUM_OF_TOKENS = 80;
-static const int MAX_STR_LEN = 256;
-static const int MAX_NUM_OF_CMD = 10;
+static const int MAX_NUM_OF_TOKENS = 2097152;
+static const int MAX_STR_LEN = 2097152;
+static const int MAX_NUM_OF_CMD = 2097152;
 
 char** parse_cmd (char* cmd) {
 	char** a = malloc (sizeof(char*) * MAX_NUM_OF_TOKENS);
@@ -64,24 +64,6 @@ char*** parse_cmdline (char* cmdline)
 
     return cmd_array;
 }
-
-//void run_cmd(char** cmd, int fd_in, int fd_out) {
-//	pid_t pid = fork();
-//
-//	if (pid < 0) {
-//		perror("Run_cmd failed\n");
-//		exit(1);
-//	}
-//	if (pid) { // Parent proccess
-//		int stat_loc = -1;
-//		waitpid(pid, &stat_loc, 0);
-//		return;
-//	}
-//
-//    // Executing our cmd
-//	execvp(cmd[0], cmd);
-//	return;
-//}
 
 void seq_pipe(char ***cmd)
 {
