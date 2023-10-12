@@ -44,15 +44,14 @@ void *producer(void *param)
 	for (i=1; i<=20; i++) {
 		/* Insert into buffer */
 		pthread_mutex_lock (&m);
-		
 		if (num == BUF_SIZE)			/* block if buffer is full */
 			pthread_cond_wait (&c_prod, &m);
 		/* if executing here, buffer not full so add element */
 		buffer[add] = i;
 		add = (add+1) % BUF_SIZE;
 		num++;
-		pthread_mutex_unlock (&m);
 		pthread_cond_signal (&c_cons);
+		pthread_mutex_unlock (&m);
 		printf ("producer: inserted %d\n", i);  fflush (stdout);
 	}
 	printf ("producer quiting\n");  fflush (stdout);
@@ -64,15 +63,14 @@ void *consumer(void *param)
 	int i;
 	while (1) {
 		pthread_mutex_lock (&m);
-		
 		if (num == 0)		/* block if buffer empty */
 			pthread_cond_wait (&c_cons, &m);
 		/* if executing here, buffer not empty so remove element */
 		i = buffer[rem];
 		rem = (rem+1) % BUF_SIZE;
 		num--;
-		pthread_mutex_unlock (&m);
 		pthread_cond_signal (&c_prod);
+		pthread_mutex_unlock (&m);
 		printf ("Consume value %d\n", i);  fflush(stdout);
 	}
 }
