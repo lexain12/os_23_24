@@ -95,7 +95,7 @@ int server_cmd(struct Server* server) {
 int client_request(struct Server* server, threadpool pool, int client_num) {
     char buf[BUF_SIZE] = {};
     char cmd[BUF_SIZE] = {};
-    char file[BUF_SIZE] = {};
+    char* file = (char*) calloc(BUF_SIZE, sizeof(char));
     read(server->clients[client_num].tx_fd, buf, BUF_SIZE);
     fprintf (stderr, "client cmd: %s\n", buf);
 
@@ -112,20 +112,22 @@ int client_request(struct Server* server, threadpool pool, int client_num) {
     fprintf(stderr, "OK\n");
     
     fprintf(stderr, "HEY %s\n", server->clients[client_num].rx_filename);
-    int dest_fd = open(server->clients[client_num].rx_filename, O_WRONLY);
-    assert(dest_fd >= 0);
 
-    union send_file_args args[] = {{.fd = dest_fd}, {.buf = file}};
+    union send_file_args* args = (union send_file_args*) calloc(2, sizeof(union send_file_args)); // send_file free this memory after
+    args[0].destFileName = server->clients[client_num].rx_filename;
+    args[1].buf = file;
+
     thpool_add_work(pool, send_file, args);
-    close(dest_fd);
 
     return 0;
 }
 
 void send_file (void* args) {
-    int fd         = ((union send_file_args*)args)[0].fd;  // getting args from void*
-    char* fileName = ((union send_file_args*)args)[1].buf;
-    printf("fd %d, fileName %s\n", fd, fileName);
+    char* destFileName = ((union send_file_args*)args)[0].destFileName;  // getting args from void*
+    char* fileName     = ((union send_file_args*)args)[1].buf;
+
+    int fd = open(destFileName, O_WRONLY);
+    assert(fd > 0);
 
     fprintf(stderr, "Writing file %s\n", fileName);
     char buff[BUF_SIZE] = {};
@@ -136,13 +138,16 @@ void send_file (void* args) {
     int num_readed = 0;
 
     while (num_readed = fread(buff, sizeof(char), BUF_SIZE, fileptr)) {
+        perror("Read");
         write(fd, buff, num_readed);
         fprintf(stderr, "%d %s", num_readed, buff);
     }
-    fprintf(stderr, "Writing file %d\n", num_readed);
     perror("Reading");
 
     fclose(fileptr);
+    close(fd);
+    free(args);
+    free(fileName);
 
     return;
 }

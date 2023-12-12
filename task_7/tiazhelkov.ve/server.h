@@ -17,7 +17,7 @@ struct Server {
 
 union send_file_args {
     char* buf;
-    int   fd ;
+    char* destFileName;
 };
 
 int  server_init (struct Server* server, char* tx_name, char* rx_name);
