@@ -12,6 +12,7 @@
 
 #include "server.h"
 #include "log.h"
+#include "C-Thread-Pool/thpool.h"
 
 int main () {
     struct Server server = {};
@@ -27,6 +28,7 @@ int main () {
 
     FD_ZERO(&rfds);
     FD_SET(server.rx, &rfds);
+    threadpool thpool = thpool_init(4);
     
     while (1) {
         retval = select(server.max_fd + 1, &rfds, NULL, NULL, NULL);
@@ -47,7 +49,7 @@ int main () {
             fprintf (stderr, "%d %d\n", i, server.clients[i].tx_fd);
             if (FD_ISSET(server.clients[i].tx_fd, &rfds) && server.clients[i].tx_fd != 0) {
                 fprintf(stderr, "Client request %d\n", i);
-                client_request(&server, i);
+                client_request(&server, thpool, i);
                 FD_CLR(server.clients[i].tx_fd, &rfds);
             }
         }
@@ -90,7 +92,7 @@ int server_cmd(struct Server* server) {
     return 0;
 }
 
-int client_request(struct Server* server, int client_num) {
+int client_request(struct Server* server, threadpool pool, int client_num) {
     char buf[BUF_SIZE] = {};
     char cmd[BUF_SIZE] = {};
     char file[BUF_SIZE] = {};
@@ -112,13 +114,19 @@ int client_request(struct Server* server, int client_num) {
     fprintf(stderr, "HEY %s\n", server->clients[client_num].rx_filename);
     int dest_fd = open(server->clients[client_num].rx_filename, O_WRONLY);
     assert(dest_fd >= 0);
-    send_file(dest_fd, file);
+
+    union send_file_args args[] = {{.fd = dest_fd}, {.buf = file}};
+    thpool_add_work(pool, send_file, args);
     close(dest_fd);
 
     return 0;
 }
 
-void send_file (int fd, char* fileName) {
+void send_file (void* args) {
+    int fd         = ((union send_file_args*)args)[0].fd;  // getting args from void*
+    char* fileName = ((union send_file_args*)args)[1].buf;
+    printf("fd %d, fileName %s\n", fd, fileName);
+
     fprintf(stderr, "Writing file %s\n", fileName);
     char buff[BUF_SIZE] = {};
 

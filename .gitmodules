@@ -1,0 +1,3 @@
+[submodule "task_7/tiazhelkov.ve/C-Thread-Pool"]
+	path = task_7/tiazhelkov.ve/C-Thread-Pool
+	url = https://github.com/Pithikos/C-Thread-Pool.git
