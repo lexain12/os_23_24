@@ -4,11 +4,13 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#include "../include/worker.h"
+
 #define UDP_PORT_RECEIVE 8123  // Port for receiving UDP messages
 #define UDP_PORT_SEND 8123// Port for sending UDP responses
 #define WORKER_PORT 8123// Port for worker TCP connections
 #define MAX_CORES 8            // Maximum number of cores (for demonstration)
-#define BUF_SIZE 1024
+#define BUF_SIZE 4096
 
 int main() {
     // UDP socket for receiving UDP messages
@@ -20,8 +22,7 @@ int main() {
 
     struct sockaddr_in udpReceiveAddr;
     memset(&udpReceiveAddr, 0, sizeof(udpReceiveAddr));
-    udpReceiveAddr.sin_family = AF_INET;
-    udpReceiveAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    udpReceiveAddr.sin_family = AF_INET; udpReceiveAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     udpReceiveAddr.sin_port = htons(UDP_PORT_RECEIVE);
 
     if (bind(udpSocket, (struct sockaddr *)&udpReceiveAddr, sizeof(udpReceiveAddr)) == -1) {
@@ -69,7 +70,7 @@ int main() {
     udpSendAddr.sin_port = htons(UDP_PORT_SEND);
     inet_pton(AF_INET, clientIP, &udpSendAddr.sin_addr);
 
-    sleep(15);
+    sleep(1);
     // Send the number of CPU cores back through UDP
     char coresBuffer[16];
     snprintf(coresBuffer, sizeof(coresBuffer), "%d", numCores);
@@ -127,10 +128,23 @@ int main() {
         char clientTcpIP[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &clientTcpAddr.sin_addr, clientTcpIP, INET_ADDRSTRLEN);
         int clientTcpPort = ntohs(clientTcpAddr.sin_port);
+        sleep(4);
+        char buff[BUF_SIZE];
+        int len = read(clientSocket, buff, sizeof(buff));
+        buff[len] = '\0';
 
         printf("Accepted TCP connection from %s:%d\n", clientTcpIP, clientTcpPort);
+        printf ("Message from server %s", buff);
+        struct Task task = {};
+
+        sscanf(buff, "%lf %lf %lf %lf %lld", &task.x1, &task.y1, &task.x2, &task.y2, &task.num_of_points);
+        sleep(1);
+        double result = monte_carlo(task, MAX_CORES);
+        write(clientSocket, &result, sizeof(double));
+
 
         close(clientSocket);
+        break;
     }
 
     close(listenSocket);
