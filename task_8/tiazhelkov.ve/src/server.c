@@ -78,7 +78,7 @@ int send_invite_to_workers() {
     
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(SERVERPORT);
-    servaddr.sin_addr.s_addr = inet_addr("192.168.1.255");
+    servaddr.sin_addr.s_addr = inet_addr("192.168.109.255");
 	memset(servaddr.sin_zero, '\0', sizeof servaddr.sin_zero);
     
     int numbytes = 0;
@@ -225,22 +225,24 @@ int print_one_task(char* dest, struct Task task) {
 
 void send_task(struct Server *server) {
     char buffer[BUF_SIZE];
-    int task_number;
+    int task_number = 0;
     for (int i = 0; i < server->num_of_workers; ++i) {
-        int offset = 0;
-        for (int j = 0; j < server->workers[i].num_of_cores; j++) {
-            offset += print_one_task(buffer + offset, server->tasks[task_number]);
-            task_number += 1;
-        }
+        struct Task task = {.x1 = server->tasks[task_number].x1,
+                            .x2 = server->tasks[task_number + server->workers[i].num_of_cores - 1].x2,
+                            .y1 = server->tasks[task_number].y1,
+                            .y2 = server->tasks[task_number + server->workers[i].num_of_cores - 1].y2,
+                            .num_or_points = server->tasks[task_number].num_or_points * server->workers[i].num_of_cores};
+
+        int len = print_one_task(buffer, task);
 
         fprintf(stderr, "%s\n", buffer);
-        write(server->workers[i].socket, buffer, sizeof(buffer));
+        write(server->workers[i].socket, buffer, len);
     }
     printf ("Number of tasks %d\n", task_number);
 }
 
 
-void gather_results(struct Server* server) {
+double gather_results(struct Server* server) {
     fd_set readSet;
     FD_ZERO(&readSet);
     int maxfd = server->workers[server->num_of_workers - 1].socket;
@@ -298,14 +300,17 @@ void gather_results(struct Server* server) {
     }
 
     // All workers have responded, process the results if needed
+    double res = 0;
     for (int i = 0; i < server->num_of_workers; ++i) {
         printf("Worker %d result: %f\n", i + 1, server->workers[i].result);
+        res += server->workers[i].result;
     }
+    return res;
 }
 
 int main(int argc, char *argv[])
 {
-    struct Task main_task = {.x1 = 0.0, .y1 = 0.0, .x2 = 3.0, .y2 = 3.0, .num_or_points=10000};
+    struct Task main_task = {.x1 = 0.0, .y1 = 0.0, .x2 = 3.0, .y2 = 3.0, .num_or_points=100000};
 
     struct Server server = {};
     send_invite_to_workers();
@@ -314,7 +319,9 @@ int main(int argc, char *argv[])
     establish_connections(&server);
     sleep(1);
     send_task(&server);
-    gather_results(&server);
+    double res = gather_results(&server);
+
+    printf("FINAL res: %lf\n", res);
 
 
     return 0;
